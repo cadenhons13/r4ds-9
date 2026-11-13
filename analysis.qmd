@@ -13,3 +13,56 @@ library(purrr)
 library(leaflet)
 library(jsonlite)
 ```
+
+```{r}
+#| cache: true
+raw <- read_json("data/wildfires.geojson", simplifyVector = FALSE)
+
+wildfires <- tibble(features = raw$features) |>
+  unnest_wider(features) |>
+  unnest_wider(properties)
+
+fires <- wildfires |>
+  unnest_wider(geometry, names_sep = "_") |>
+  select(incident, gis_acres, fire_year, agency, state, geometry_coordinates) |>
+  mutate(
+    gis_acres = as.numeric(gis_acres),
+    fire_year = as.integer(fire_year)
+  )
+```
+
+```{r}
+august_fires <- fires |>
+  filter(str_detect(incident, regex("\\bAugust\\b", ignore_case = TRUE)))
+
+nrow(august_fires)
+
+fires |>
+  slice_max(gis_acres, n = 10, with_ties = FALSE)
+```
+
+```{r}
+big_fires <- fires |>
+  filter(gis_acres >= 100000) |>
+  mutate(
+    lon = map_dbl(
+      geometry_coordinates,
+      \(rings) mean(map_dbl(purrr::flatten(rings), \(point) point[[1]]))
+    ),
+    lat = map_dbl(
+      geometry_coordinates,
+      \(rings) mean(map_dbl(purrr::flatten(rings), \(point) point[[2]]))
+    )
+  )
+```
+
+```{r}
+leaflet(big_fires) |>
+  addTiles() |>
+  addCircleMarkers(
+    lng = ~lon,
+    lat = ~lat,
+    radius = ~sqrt(gis_acres) / 100
+  ) |>
+  setView(lng = -115, lat = 40, zoom = 4)
+```
