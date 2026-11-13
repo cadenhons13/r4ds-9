@@ -1,0 +1,15 @@
+---
+title: "Wildfires"
+author: "cadenhons13"
+format: html
+execute:
+  echo: false
+---
+
+```{r}
+#| message: false
+library(tidyverse)
+library(purrr)
+library(leaflet)
+library(jsonlite)
+```
